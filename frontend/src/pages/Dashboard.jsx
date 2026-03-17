@@ -96,6 +96,7 @@ export default function Dashboard() {
   const [leftW,           setLeftW]           = useState(280)
   const [rightW,          setRightW]          = useState(310)
   const [activeAlertLevel, setActiveAlertLevel] = useState(null)
+  const [selectedDayOffset, setSelectedDayOffset] = useState(0)
 
   useEffect(() => { setForecastDone(false) }, [simulatedMode])
 
@@ -134,14 +135,22 @@ export default function Dashboard() {
     setAvatarState(user?.avatar_state ?? 'energized')
     setWeatherData(null)
     setForecastDone(false)
+    setSelectedDayOffset(0)
   }
 
-  const fetchWeather = useCallback(async () => {
+  const fetchWeather = useCallback(async (targetOffset = selectedDayOffset) => {
     if (loading) return
     setLoading(true)
     try {
+      const parsedTargetOffset = typeof targetOffset === 'number'
+        ? targetOffset
+        : Number.parseInt(targetOffset, 10)
+      const resolvedTargetOffset = Number.isInteger(parsedTargetOffset)
+        ? Math.max(0, Math.min(3, parsedTargetOffset))
+        : selectedDayOffset
       const modeParam = simulatedMode !== 'auto' ? `&mode=${simulatedMode}` : ''
-      const { data } = await api.get(`/api/weather/current?avatar_state=${avatarState}${modeParam}`)
+      const dayParam = `&target_day_offset=${resolvedTargetOffset}`
+      const { data } = await api.get(`/api/weather/current?avatar_state=${avatarState}${modeParam}${dayParam}`)
       setWeatherData(data)
       setForecastDone(true)
     } catch (err) {
@@ -149,7 +158,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [avatarState, simulatedMode, loading])
+  }, [avatarState, simulatedMode, selectedDayOffset, loading])
 
   const refreshActiveAlerts = useCallback(async () => {
     try {
@@ -204,7 +213,16 @@ export default function Dashboard() {
   const bgWeather   = simulatedMode !== 'auto' ? { description: MODE_BG_DESC[simulatedMode] } : (weatherData?.weather_data ?? null)
   const { temp }    = extractWeather(weatherData?.weather_data ?? {})
   const leftProps   = { user, profile, onSelect: handleAvatarSelect, onReset: handleReset }
-  const centerProps = { weatherData, loading, onRefresh: fetchWeather, forecastDone, simulatedMode, onModeChange: setSimulatedMode }
+  const centerProps = {
+    weatherData,
+    loading,
+    onRefresh: fetchWeather,
+    forecastDone,
+    simulatedMode,
+    onModeChange: setSimulatedMode,
+    selectedDayOffset,
+    onSelectDayOffset: setSelectedDayOffset,
+  }
   const rightProps  = { weatherData, avatarState, autoSend, simulatedMode, emergency, onDismissEmergency: dismissEmergency }
   const pulseLevel = toPulseLevel(emergency?.severity) ?? activeAlertLevel
   const pulseBorderClass = pulseLevel === 'rojo' ? 'border-red-500' : pulseLevel === 'naranja' ? 'border-orange-400' : 'border-yellow-400'

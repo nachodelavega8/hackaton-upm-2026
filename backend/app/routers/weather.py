@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -109,14 +109,18 @@ async def _ensure_spanish_analysis(text: str) -> str:
 async def get_current_weather(
     avatar_state: str = "energized",
     mode: Optional[str] = None,
+    target_day_offset: int = Query(default=0, ge=0, le=3),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user),
 ):
     """Fetch live weather + personalized LLM analysis based on avatar state.
     mode=rain|fog|desert|snow → use simulated data instead of EC2 API.
+    target_day_offset=0..3 selects today or one of the next 3 forecast days.
     """
+    target_date = (datetime.now(timezone.utc) + timedelta(days=target_day_offset)).date().isoformat()
+
     # ── 10-minute cache (only for real/non-simulated requests) ───────────────
-    if mode is None and current_user:
+    if mode is None and current_user and target_day_offset == 0:
         cutoff = datetime.utcnow() - timedelta(minutes=10)
         cached = (
             db.query(WeatherRecord)
@@ -141,6 +145,8 @@ async def get_current_weather(
                 llm_response=cached_llm,
                 avatar_state=cached.avatar_state or avatar_state,
                 record_id=cached.id,
+                target_day_offset=0,
+                target_date=datetime.now(timezone.utc).date().isoformat(),
             )
 
     # ── Fetch or select weather data ─────────────────────────────────────────
@@ -173,8 +179,27 @@ async def get_current_weather(
             for r in rows
         ]
 
-    system_prompt = f"{get_system_prompt(avatar_state, user_name)}\n\n{SPANISH_ANALYSIS_RULE}"
-    user_prompt = build_weather_user_prompt(weather_data, avatar_state, history)
+    if target_day_offset == 0:
+        forecast_target_rule = "CONTEXTO DE FECHA: la previsión es para HOY."
+    else:
+        forecast_target_rule = (
+            f"CONTEXTO DE FECHA: la previsión es para {target_date} "
+            f"(dentro de {target_day_offset} día(s)). "
+            "Redacta en futuro y enfoca recomendaciones para ese día concreto."
+        )
+
+    system_prompt = (
+        f"{get_system_prompt(avatar_state, user_name)}\n\n"
+        f"{SPANISH_ANALYSIS_RULE}\n"
+        f"{forecast_target_rule}"
+    )
+    user_prompt = build_weather_user_prompt(
+        weather_data,
+        avatar_state,
+        history,
+        target_date=target_date,
+        target_day_offset=target_day_offset,
+    )
 
     try:
         llm_raw = await call_llm(system_prompt, user_prompt)
@@ -201,6 +226,8 @@ async def get_current_weather(
         llm_response=llm_text,
         avatar_state=avatar_state,
         record_id=record.id,
+        target_day_offset=target_day_offset,
+        target_date=target_date,
     )
 
 

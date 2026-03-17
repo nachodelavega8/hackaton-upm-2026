@@ -259,6 +259,8 @@ def build_weather_user_prompt(
     weather_data: Dict[str, Any],
     avatar_state: str,
     history: Optional[List[Dict]] = None,
+    target_date: Optional[str] = None,
+    target_day_offset: int = 0,
 ) -> str:
     weather_json = json.dumps(weather_data, indent=2, ensure_ascii=False)
     avatar_label = AVATAR_LABELS.get(avatar_state, "User")
@@ -275,6 +277,16 @@ def build_weather_user_prompt(
             for h in recent
         )
         parts.append(f"\nRecent weather history (last {len(recent)} days):\n{history_lines}")
+
+    if target_day_offset <= 0:
+        parts.append("\nForecast target day: TODAY (current day).")
+    else:
+        parts.append(
+            f"\nForecast target day: {target_date} (in {target_day_offset} day(s) from today)."
+        )
+        parts.append(
+            "Treat this as a future forecast for the selected day, not as an immediate-now report."
+        )
 
     parts.append("\nGenerate a personalized weather briefing now.")
     return "\n".join(parts)

@@ -79,6 +79,8 @@ class WeatherResponse(BaseModel):
     llm_response: str
     avatar_state: str
     record_id: Optional[int] = None
+    target_day_offset: int = 0
+    target_date: Optional[str] = None
 
 
 class WeatherRecordOut(BaseModel):

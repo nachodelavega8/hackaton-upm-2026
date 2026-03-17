@@ -1,8 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { RefreshCw } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import { useEffect, useMemo, useState } from 'react'
-import api from '../../services/api'
+import { useMemo, useState } from 'react'
 import {
   COND_EMOJI, COND_LABEL_ES, GLOW_COLOR, HERO_GRADIENT,
   extractSuggestions, extractWeather, getCondition,
@@ -126,106 +125,48 @@ function ModePicker({ current, onChange }) {
   )
 }
 
-// ─── Mini calendar ────────────────────────────────────────────────────────────
-const MONTH_ES   = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-const WEEKDAY_ES = ['L','M','X','J','V','S','D']
+// ─── Mini calendar (today + next 3 days) ─────────────────────────────────────
+const FORECAST_DAY_LABELS = ['Hoy', 'Mañana', '+2 días', '+3 días']
 
-function MiniCalendar({ history }) {
-  const [popover, setPopover] = useState(null) // { day, records }
-
-  const today      = new Date()
-  const year       = today.getFullYear()
-  const month      = today.getMonth()
-  const todayDay   = today.getDate()
-
-  // Map records by YYYY-MM-DD (local time)
-  const byDate = useMemo(() => {
-    const map = {}
-    ;(history || []).forEach(r => {
-      const d   = new Date(r.created_at)
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-      if (!map[key]) map[key] = []
-      map[key].push(r)
+function MiniCalendar({ selectedOffset = 0, onSelectOffset }) {
+  const days = useMemo(() => {
+    return Array.from({ length: 4 }, (_, offset) => {
+      const date = new Date()
+      date.setHours(0, 0, 0, 0)
+      date.setDate(date.getDate() + offset)
+      return {
+        offset,
+        label: FORECAST_DAY_LABELS[offset],
+        weekday: date.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', ''),
+        month: date.toLocaleDateString('es-ES', { month: 'short' }).replace('.', ''),
+        day: date.getDate(),
+        iso: date.toISOString().slice(0, 10),
+      }
     })
-    return map
-  }, [history])
-
-  // Build cells: Mon-anchored blank padding + day numbers
-  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7
-  const daysInMonth  = new Date(year, month + 1, 0).getDate()
-  const cells        = [
-    ...Array(firstWeekday).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ]
-
-  const monthPrefix = `${year}-${String(month + 1).padStart(2,'0')}`
+  }, [])
 
   return (
-    <div className="w-full max-w-[238px] bg-white/5 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10 relative">
-      {/* Header */}
-      <p className="text-center text-white/50 text-[10px] font-semibold uppercase tracking-widest mb-1.5">
-        {MONTH_ES[month]} {year}
+    <div className="w-full max-w-[320px] bg-white/5 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
+      <p className="text-center text-white/50 text-[10px] font-semibold uppercase tracking-widest mb-2">
+        Día de predicción
       </p>
-
-      {/* Weekday labels */}
-      <div className="grid grid-cols-7 mb-0.5">
-        {WEEKDAY_ES.map(d => (
-          <span key={d} className="text-center text-white/20 text-[9px] font-medium py-0.5">{d}</span>
-        ))}
-      </div>
-
-      {/* Day cells */}
-      <div className="grid grid-cols-7">
-        {cells.map((day, i) => {
-          if (!day) return <div key={`e${i}`} className="h-6" />
-          const key     = `${monthPrefix}-${String(day).padStart(2,'0')}`
-          const records = byDate[key] || []
-          const isToday = day === todayDay
-
+      <div className="grid grid-cols-4 gap-1.5">
+        {days.map((dayInfo) => {
+          const isSelected = selectedOffset === dayInfo.offset
           return (
-            <div key={day} className="flex flex-col items-center h-6 relative">
-              <button
-                className={`w-5 h-5 flex items-center justify-center rounded-full text-[10px] transition-colors
-                  ${isToday ? 'ring-[1.5px] ring-white/50 text-white font-bold' : 'text-white/45'}
-                  ${records.length ? 'cursor-pointer hover:bg-white/10 hover:text-white/80' : 'cursor-default'}
-                `}
-                onClick={records.length ? () => setPopover(p => p?.day === day ? null : { day, records }) : undefined}
-              >
-                {day}
-              </button>
-              {records.length > 0 && (
-                <div className="w-1 h-1 rounded-full bg-blue-400 mt-px" />
-              )}
-
-              {/* Popover */}
-              {popover?.day === day && (
-                <div
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 z-50 mb-1.5 w-44
-                             bg-slate-900/95 border border-white/15 rounded-xl p-2.5 shadow-2xl
-                             backdrop-blur-md text-left"
-                  style={{ minWidth: 160 }}
-                >
-                  <button
-                    onClick={() => setPopover(null)}
-                    className="absolute top-1.5 right-2 text-white/25 hover:text-white/60 text-[10px]"
-                  >✕</button>
-                  {popover.records.map((r, ri) => (
-                    <div key={ri} className={ri > 0 ? 'border-t border-white/10 mt-1.5 pt-1.5' : ''}>
-                      <p className="text-white/35 text-[9px]">
-                        {new Date(r.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                        {' · '}<span className="text-blue-300/60">{r.avatar_state}</span>
-                      </p>
-                      {r.temperature != null && (
-                        <p className="text-white/90 text-xs font-bold leading-tight">{Math.round(r.temperature)}°C</p>
-                      )}
-                      {r.description && (
-                        <p className="text-white/35 text-[9px] truncate">{r.description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              key={dayInfo.iso}
+              onClick={() => onSelectOffset?.(dayInfo.offset)}
+              className={`rounded-xl border px-2 py-2 text-center transition-all
+                ${isSelected
+                  ? 'border-blue-400/80 bg-blue-500/15 text-blue-100 shadow-lg shadow-blue-900/30'
+                  : 'border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.08] hover:text-white/85'}
+              `}
+            >
+              <p className="text-[9px] uppercase tracking-wider">{dayInfo.label}</p>
+              <p className="text-sm font-bold mt-0.5">{dayInfo.day}</p>
+              <p className="text-[9px] capitalize opacity-80">{dayInfo.weekday} · {dayInfo.month}</p>
+            </button>
           )
         })}
       </div>
@@ -288,7 +229,8 @@ function SuggestionsRow({ suggestions }) {
 }
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
-function EmptyState({ onFetch, loading }) {
+function EmptyState({ onFetch, loading, selectedDayOffset = 0 }) {
+  const targetLabel = FORECAST_DAY_LABELS[selectedDayOffset] ?? 'Hoy'
   return (
     <div className="flex flex-col items-center gap-5">
       <motion.span className="text-[70px] opacity-20 leading-none"
@@ -299,7 +241,7 @@ function EmptyState({ onFetch, loading }) {
         Completa el test de estado y obtén tu previsión personalizada
       </p>
       <motion.button
-        onClick={onFetch}
+        onClick={() => onFetch?.()}
         disabled={loading}
         className="px-7 py-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600
                    text-white font-bold text-sm shadow-xl shadow-blue-900/30
@@ -312,7 +254,7 @@ function EmptyState({ onFetch, loading }) {
               animate={{ rotate: 360 }} transition={{ duration: 0.7, repeat: Infinity, ease: 'linear' }} />
             Analizando…
           </span>
-        ) : '☁️ Obtener previsión'}
+        ) : `☁️ Obtener previsión (${targetLabel})`}
       </motion.button>
     </div>
   )
@@ -336,16 +278,9 @@ function Skeleton() {
 export default function CenterPanel({
   weatherData, loading, onRefresh,
   forecastDone, simulatedMode = 'auto', onModeChange,
+  selectedDayOffset = 0, onSelectDayOffset,
 }) {
-  const [history,      setHistory]      = useState([])
   const [analysisOpen, setAnalysisOpen] = useState(false)
-
-  // Fetch calendar history whenever a new record is saved
-  useEffect(() => {
-    api.get('/api/weather/history?limit=31')
-      .then(({ data }) => setHistory(data))
-      .catch(() => {})
-  }, [weatherData?.record_id])
 
   // Resolve displayed weather (real API data only)
   const effectiveRaw = weatherData?.weather_data ?? {}
@@ -364,6 +299,22 @@ export default function CenterPanel({
     ? new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
     : null
 
+  const selectedDayLabel = FORECAST_DAY_LABELS[selectedDayOffset] ?? 'Hoy'
+  const targetDateLabel = weatherData?.target_date
+    ? new Date(`${weatherData.target_date}T00:00:00`).toLocaleDateString('es-ES', {
+        weekday: 'long', day: 'numeric', month: 'long',
+      })
+    : null
+
+  const handleSelectForecastDay = (offset) => {
+    if (offset === selectedDayOffset) return
+    onSelectDayOffset?.(offset)
+    if (weatherData && !loading) {
+      setAnalysisOpen(false)
+      onRefresh?.(offset)
+    }
+  }
+
   const gradient = HERO_GRADIENT[condition]
 
   return (
@@ -378,7 +329,7 @@ export default function CenterPanel({
       {/* Refresh icon when data is loaded */}
       {hasDisplay && (
         <motion.button
-          onClick={onRefresh}
+          onClick={() => onRefresh?.()}
           disabled={loading}
           className="absolute top-3 right-3 z-10 text-white/25 hover:text-white/65 transition-colors disabled:opacity-20"
           whileTap={{ scale: 0.88 }}
@@ -405,7 +356,7 @@ export default function CenterPanel({
 
           ) : !hasDisplay ? (
             <motion.div key="empty" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <EmptyState onFetch={onRefresh} loading={loading} />
+              <EmptyState onFetch={onRefresh} loading={loading} selectedDayOffset={selectedDayOffset} />
             </motion.div>
 
           ) : (
@@ -425,7 +376,7 @@ export default function CenterPanel({
               </motion.span>
 
               {/* ── Mini calendar ── */}
-              <MiniCalendar history={history} />
+              <MiniCalendar selectedOffset={selectedDayOffset} onSelectOffset={handleSelectForecastDay} />
 
               {/* Giant temperature */}
               <div className="text-center">
@@ -465,7 +416,9 @@ export default function CenterPanel({
 
               {/* Timestamp */}
               {updatedAt && (
-                <p className="text-white/20 text-[10px]">Actualizado a las {updatedAt}</p>
+                <p className="text-white/20 text-[10px] text-center">
+                  Predicción para {targetDateLabel ?? selectedDayLabel.toLowerCase()} · actualizado a las {updatedAt}
+                </p>
               )}
 
               {/* ── Collapsible AI analysis ── */}
