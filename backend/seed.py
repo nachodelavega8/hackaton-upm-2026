@@ -166,7 +166,7 @@ def seed():
         print("\n🔑 Demo credentials (all use password: password123):")
         for username, email, avatar in users_config:
             print(f"   {username:<12} | {avatar}")
-        print("\n🔴 Admin password: from .env ADMIN_PASSWORD (default: admin2024!)")
+        print("\n🔴 Admin password: from .env ADMIN_PASSWORD (default: Admin)")
 
     finally:
         db.close()

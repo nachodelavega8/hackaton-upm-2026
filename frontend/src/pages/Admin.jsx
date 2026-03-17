@@ -42,6 +42,8 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('overview')
   const [stats, setStats] = useState(null)
   const [users, setUsers] = useState([])
+  const [usersError, setUsersError] = useState('')
+  const [deletingUserId, setDeletingUserId] = useState(null)
   const [statsLoading, setStatsLoading] = useState(false)
 
   const handleLoginSuccess = (pw) => {
@@ -60,8 +62,30 @@ export default function Admin() {
   }
 
   const fetchUsers = async () => {
-    const { data } = await api.get(`/api/admin/users?admin_password=${adminPassword}`)
-    setUsers(data)
+    setUsersError('')
+    try {
+      const { data } = await api.get(`/api/admin/users?admin_password=${adminPassword}`)
+      setUsers(data)
+    } catch (err) {
+      setUsersError(err.response?.data?.detail ?? 'No se pudieron cargar los usuarios')
+    }
+  }
+
+  const handleDeleteUser = async (user) => {
+    const confirmed = window.confirm(`¿Eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`)
+    if (!confirmed) return
+
+    setDeletingUserId(user.id)
+    setUsersError('')
+    try {
+      await api.delete(`/api/admin/users/${user.id}?admin_password=${encodeURIComponent(adminPassword)}`)
+      setUsers((prev) => prev.filter((u) => u.id !== user.id))
+      fetchStats()
+    } catch (err) {
+      setUsersError(err.response?.data?.detail ?? 'No se pudo eliminar el usuario')
+    } finally {
+      setDeletingUserId(null)
+    }
   }
 
   useEffect(() => {
@@ -196,11 +220,16 @@ export default function Admin() {
               <Users className="w-5 h-5 text-blue-400" />
               Usuarios Registrados ({users.length})
             </h3>
+            {usersError && (
+              <p className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                {usersError}
+              </p>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-white/5 border-b border-white/5">
-                    {['ID', 'Usuario', 'Email', 'Estado', 'Registro'].map((h) => (
+                    {['ID', 'Usuario', 'Email', 'Estado', 'Registro', 'Acciones'].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs text-slate-400 uppercase tracking-wider font-semibold">
                         {h}
                       </th>
@@ -227,6 +256,15 @@ export default function Admin() {
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
                         {new Date(u.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleDeleteUser(u)}
+                          disabled={deletingUserId === u.id}
+                          className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200 text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {deletingUserId === u.id ? 'Eliminando...' : 'Eliminar'}
+                        </button>
                       </td>
                     </motion.tr>
                   ))}

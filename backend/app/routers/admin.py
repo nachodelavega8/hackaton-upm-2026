@@ -21,7 +21,7 @@ from app.websocket_manager import manager
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin2024!")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin")
 
 EMERGENCY_TO_ALERT_SEVERITY = {
     "amarillo": "info",
@@ -164,6 +164,42 @@ async def list_users(admin_password: str = Query(...), db: Session = Depends(get
          "avatar_state": u.avatar_state, "created_at": u.created_at}
         for u in users
     ]
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    admin_password: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    _require_admin(admin_password)
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    username = user.username
+    deleted_weather_records = (
+        db.query(WeatherRecord)
+        .filter(WeatherRecord.user_id == user_id)
+        .delete(synchronize_session=False)
+    )
+    db.delete(user)
+    db.commit()
+
+    logger.warning(
+        "Admin deleted user id=%s username=%s weather_records=%s",
+        user_id,
+        username,
+        deleted_weather_records,
+    )
+
+    return {
+        "status": "deleted",
+        "user_id": user_id,
+        "username": username,
+        "deleted_weather_records": deleted_weather_records,
+    }
 
 
 # ─── 🔴 THE RED BUTTON — EMERGENCY BROADCAST ──────────────────────────────────

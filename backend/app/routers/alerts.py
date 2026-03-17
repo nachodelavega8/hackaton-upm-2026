@@ -14,7 +14,7 @@ from app.websocket_manager import manager
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin2024!")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin")
 
 
 def _require_admin(password: str):

@@ -102,7 +102,7 @@ export default function Dashboard() {
   const handleAvatarSelect = async (profileObj) => {
     const isProfile = typeof profileObj !== 'string'
     const state     = isProfile ? profileObj.prompt_key : profileObj
-    //Formulario para determinar el estado del
+    //Formulario para determinar el estado del usuario
     setAvatarState(state)
     if (isProfile) {
       setProfile(profileObj)
@@ -224,7 +224,7 @@ export default function Dashboard() {
       <WeatherBackground weatherData={bgWeather} />
       <Navbar simulatedMode={simulatedMode} onResetMode={() => setSimulatedMode('auto')} onDeleteAccount={openDeleteModal} />
 
-      {/* DESKTOP */}
+      {/*DESKTOP*/}
       <div className="hidden lg:flex flex-1 min-h-0 p-2 overflow-hidden relative z-10">
         <div className="shrink-0 min-h-0" style={{ width: leftW }}>
           <LeftPanel {...leftProps} />
@@ -239,7 +239,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* MOBILE */}
+      {/*MOBILE*/}
       <div className="lg:hidden flex-1 min-h-0 flex flex-col overflow-hidden relative z-10">
         <div className="flex-1 overflow-hidden relative p-3">
           <AnimatePresence mode="wait" custom={tabDir}>
@@ -297,7 +297,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* Delete account modal */}
+      {/*Delete account modal*/}
       <AnimatePresence>
         {showDeleteModal && (
           <motion.div
