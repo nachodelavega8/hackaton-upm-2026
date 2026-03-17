@@ -13,7 +13,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
-    email = Column(String(120), unique=True, index=True, nullable=True)
+    email = Column(String(120), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     avatar_state = Column(String(20), default="energized", nullable=False)
     is_active = Column(Boolean, default=True)
@@ -21,6 +21,25 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     weather_records = relationship("WeatherRecord", back_populates="user", lazy="dynamic")
+    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+
+    @property
+    def age_range(self):
+        if self.profile is None:
+            return None
+        return self.profile.age_range
+
+
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True, nullable=False)
+    age_range = Column(String(20), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="profile")
 
 
 class WeatherRecord(Base):

@@ -7,8 +7,8 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.models import User
-from app.schemas.schemas import AvatarUpdate, Token, UserCreate, UserLogin, UserOut
+from app.models.models import User, UserProfile, WeatherRecord
+from app.schemas.schemas import AvatarUpdate, ProfileUpdate, Token, UserCreate, UserLogin, UserOut
 from app.services.jwt_service import create_access_token, verify_token
 
 logger = logging.getLogger(__name__)
@@ -77,12 +77,17 @@ async def require_user(
 
 @router.post("/register", response_model=Token, status_code=201)
 async def register(body: UserCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.username == body.username).first():
-        raise HTTPException(status_code=409, detail="Username already taken")
+    username = body.username.strip()
+    email = body.email.strip().lower()
+
+    if db.query(User).filter(User.username == username).first():
+        raise HTTPException(status_code=409, detail="El nombre de usuario ya está en uso")
+    if db.query(User).filter(User.email == email).first():
+        raise HTTPException(status_code=409, detail="El correo electrónico ya está en uso")
 
     user = User(
-        username=body.username,
-        email=body.email,
+        username=username,
+        email=email,
         hashed_password=_hash(body.password),
         avatar_state="energized",
     )
@@ -96,9 +101,11 @@ async def register(body: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(body: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == body.username).first()
+    username = body.username.strip()
+    email = body.email.strip().lower()
+    user = db.query(User).filter(User.username == username, User.email == email).first()
     if not user or not _verify(body.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="Correo, usuario o contraseña incorrectos")
 
     token = create_access_token(user_id=user.id, username=user.username)
     return Token(access_token=token, user=UserOut.model_validate(user))
@@ -124,3 +131,31 @@ async def update_avatar(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.put("/profile", response_model=UserOut)
+async def update_profile(
+    body: ProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_user),
+):
+    if current_user.profile is None:
+        current_user.profile = UserProfile(age_range=body.age_range)
+    else:
+        current_user.profile.age_range = body.age_range
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.delete("/me")
+async def delete_me(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_user),
+):
+    db.query(WeatherRecord).filter(WeatherRecord.user_id == current_user.id).delete(synchronize_session=False)
+    db.delete(current_user)
+    db.commit()
+    return {"detail": "Cuenta eliminada correctamente"}

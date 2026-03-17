@@ -5,10 +5,18 @@ import EmergencyBanner from './components/shared/EmergencyBanner'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import ProfileSetup from './pages/ProfileSetup'
 
-function ProtectedRoute({ children }) {
-  const { user } = useAuth()
-  return user ? children : <Navigate to="/" replace />
+function RequireCompletedProfile({ children }) {
+  const { user, needsProfileSetup } = useAuth()
+  if (!user) return <Navigate to="/" replace />
+  return needsProfileSetup ? <Navigate to="/perfil" replace /> : children
+}
+
+function OnlyIfProfilePending({ children }) {
+  const { user, needsProfileSetup } = useAuth()
+  if (!user) return <Navigate to="/" replace />
+  return needsProfileSetup ? children : <Navigate to="/dashboard" replace />
 }
 
 function AppRoutes() {
@@ -20,9 +28,17 @@ function AppRoutes() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <RequireCompletedProfile>
               <Dashboard />
-            </ProtectedRoute>
+            </RequireCompletedProfile>
+          }
+        />
+        <Route
+          path="/perfil"
+          element={
+            <OnlyIfProfilePending>
+              <ProfileSetup />
+            </OnlyIfProfilePending>
           }
         />
         <Route path="/admin" element={<Admin />} />

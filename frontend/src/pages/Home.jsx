@@ -7,19 +7,19 @@ import RegisterForm from '../components/auth/RegisterForm'
 import { useAuth } from '../context/AuthContext'
 
 export default function Home() {
-  const { user } = useAuth()
+  const { user, needsProfileSetup } = useAuth()
   const navigate = useNavigate()
-  const [mode, setMode] = useState('login') // 'login' | 'register'
+  const [mode, setMode] = useState('login') // Cambio de "modo" entre login y registro
 
-  // Already logged in → redirect to dashboard
+  // Si el usuario ya tiene la sesión iniciada, regirige a home (para futuro botón de "recuerdame")
   if (user) {
-    navigate('/dashboard', { replace: true })
+    navigate(needsProfileSetup ? '/perfil' : '/dashboard', { replace: true })
     return null
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950/30 to-slate-950 flex flex-col">
-      {/* Background particles */}
+      
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         {[...Array(12)].map((_, i) => (
           <motion.div
@@ -42,9 +42,8 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col lg:flex-row">
-        {/* Hero panel */}
+        {/*Logo*/}
         <motion.div
           className="flex-1 flex flex-col items-center justify-center px-8 py-16 text-center"
           initial={{ opacity: 0, x: -40 }}
@@ -67,35 +66,14 @@ export default function Home() {
               Self
             </span>
           </h1>
-
+          
+          {/* Mensaje de debajo del logo */}
           <p className="text-slate-300 text-xl mb-6 max-w-md">
-            Weather that adapts to <em>you</em> — powered by AI
+            El clima que se adapta a ti, impulsado por IA
           </p>
-
-          <div className="grid grid-cols-3 gap-4 max-w-sm w-full">
-            {[
-              { icon: '😴', label: 'Tired' },
-              { icon: '⚡', label: 'Energized' },
-              { icon: '🤒', label: 'Sick' },
-              { icon: '🏃', label: 'Athletic' },
-              { icon: '💼', label: 'Important' },
-              { icon: '🌤️', label: 'Your way' },
-            ].map((item, i) => (
-              <motion.div
-                key={item.label}
-                className="glass rounded-xl p-3 flex flex-col items-center gap-1"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.1 }}
-              >
-                <span className="text-2xl">{item.icon}</span>
-                <span className="text-xs text-slate-400">{item.label}</span>
-              </motion.div>
-            ))}
-          </div>
         </motion.div>
 
-        {/* Auth panel */}
+        {/* Panel de formulario inicio/registro */}
         <motion.div
           className="flex items-center justify-center px-8 py-16 lg:min-w-[480px]"
           initial={{ opacity: 0, x: 40 }}

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useState } from 'react'
 import AvatarSelector from '../components/user/AvatarSelector'
 import HistoryDashboard from '../components/user/HistoryDashboard'
@@ -11,12 +11,14 @@ import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
 
 export default function Dashboard() {
-  const { user, updateAvatar } = useAuth()
+  const { user, updateAvatar, deleteAccount, loading: authLoading } = useAuth()
   const [avatarState, setAvatarState] = useState(user?.avatar_state ?? 'energized')
   const [weatherData, setWeatherData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [autoSend, setAutoSend] = useState(null)   // { text, id } — triggers ChatBar auto-message
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const handleAvatarSelect = async (profileOrState) => {
     const isProfile = typeof profileOrState !== 'string'
@@ -54,6 +56,27 @@ export default function Dashboard() {
     }
   }, [avatarState])
 
+  const openDeleteModal = () => {
+    setDeleteError('')
+    setShowDeleteModal(true)
+  }
+
+  const closeDeleteModal = () => {
+    if (!authLoading) {
+      setShowDeleteModal(false)
+    }
+  }
+
+  const confirmDeleteAccount = async () => {
+    setDeleteError('')
+    try {
+      await deleteAccount()
+    } catch (err) {
+      const detail = err.response?.data?.detail
+      setDeleteError(typeof detail === 'string' ? detail : 'No se pudo eliminar la cuenta. Inténtalo de nuevo.')
+    }
+  }
+
   // Extract raw weather_data for background + top bar
   const rawWeather = weatherData?.weather_data ?? null
 
@@ -80,6 +103,12 @@ export default function Dashboard() {
             Hola, <span className="text-blue-400">{user?.username}</span>
             <span className="text-white/40 font-normal text-base ml-2">— tu previsión personal</span>
           </h1>
+          <button
+            onClick={openDeleteModal}
+            className="px-4 py-2 rounded-lg border border-red-500/50 text-red-300 hover:text-red-200 hover:bg-red-500/10 transition-colors"
+          >
+            Eliminar cuenta
+          </button>
         </motion.div>
 
         {/* 2 ─ WEATHER HERO CARD (star of the page) */}
@@ -145,6 +174,57 @@ export default function Dashboard() {
         </motion.div>
 
       </div>
+
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={closeDeleteModal}
+            />
+
+            <motion.div
+              className="relative z-10 glass rounded-2xl p-6 w-full max-w-md border border-red-500/40"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+            >
+              <h3 className="text-white text-lg font-bold text-center mb-2">
+                Estás seguro de que deseas borrar tu cuenta
+              </h3>
+
+              {deleteError && (
+                <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mt-3 mb-2">
+                  {deleteError}
+                </p>
+              )}
+
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={confirmDeleteAccount}
+                  disabled={authLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 border border-red-400 text-white font-semibold disabled:opacity-60"
+                >
+                  {authLoading ? 'Eliminando...' : 'si'}
+                </button>
+                <button
+                  onClick={closeDeleteModal}
+                  disabled={authLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-600/60 border border-slate-600 text-slate-200 font-semibold disabled:opacity-60"
+                >
+                  no
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Persistent bottom AI chat bar */}
       <ChatBar avatarState={avatarState} autoSend={autoSend} />

@@ -1,26 +1,38 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Literal, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 # ─── AUTH ─────────────────────────────────────────────────────────────────────
 
+AGE_RANGE_OPTIONS = ("0-16", "17-30", "30-50", "50-65", "65+")
+AgeRange = Literal["0-16", "17-30", "30-50", "50-65", "65+"]
+
 class UserCreate(BaseModel):
-    username: str
-    password: str
-    email: Optional[str] = None
+    username: str = Field(min_length=3, max_length=50)
+    email: EmailStr
+    password: str = Field(min_length=6, max_length=128)
+    confirm_password: str = Field(min_length=6, max_length=128)
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.password != self.confirm_password:
+            raise ValueError("Las contraseñas no coinciden")
+        return self
 
 
 class UserLogin(BaseModel):
-    username: str
-    password: str
+    email: EmailStr
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=6, max_length=128)
 
 
 class UserOut(BaseModel):
     id: int
     username: str
     email: Optional[str]
+    age_range: Optional[AgeRange] = None
     avatar_state: str
     created_at: datetime
 
@@ -35,6 +47,10 @@ class Token(BaseModel):
 
 class AvatarUpdate(BaseModel):
     avatar_state: str
+
+
+class ProfileUpdate(BaseModel):
+    age_range: AgeRange
 
 
 # ─── WEATHER ──────────────────────────────────────────────────────────────────

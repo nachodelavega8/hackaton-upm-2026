@@ -9,6 +9,10 @@ from typing import Any, Dict, List, Optional
 # Deferred import inside chat_response() to avoid any future circular-import issues
 # (prompt_engine ← weather_proxy ← auth_service is safe, but being explicit is cleaner)
 
+# Explicit keys reserved for future user-profile injection into system_prompt.
+SYSTEM_PROMPT_PROFILE_CONTEXT_VAR = "user_profile_context"
+SYSTEM_PROMPT_AGE_RANGE_KEY = "age_range"
+
 
 # ─── AVATAR SYSTEM PROMPT TEMPLATES ──────────────────────────────────────────
 
