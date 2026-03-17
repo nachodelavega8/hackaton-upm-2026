@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react'
 import AvatarSelector from '../components/user/AvatarSelector'
 import HistoryDashboard from '../components/user/HistoryDashboard'
 import WeatherCard from '../components/user/WeatherCard'
-import ChatWidget from '../components/user/ChatWidget'
+import ChatBar from '../components/user/ChatBar'
 import Navbar from '../components/shared/Navbar'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
@@ -41,7 +41,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950/20">
       <Navbar />
 
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 pb-32 space-y-8">
         {/* Welcome */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -119,8 +119,8 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Floating chat — positioned fixed, receives current avatar state */}
-      <ChatWidget avatarState={avatarState} />
+      {/* Persistent bottom AI chat bar */}
+      <ChatBar avatarState={avatarState} />
     </div>
   )
 }
