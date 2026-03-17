@@ -26,18 +26,14 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS — allow Vite dev server and production origins
-_origins = os.getenv(
-    "CORS_ORIGINS",
-    "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173",
-).split(",")
-
+# CORS — allow everything for the hackathon (ngrok URLs rotate, credentials are
+# carried via Authorization header not cookies so allow_credentials=False is fine)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "ngrok-skip-browser-warning"],
 )
 
 # Register routers

@@ -57,7 +57,7 @@ function mapDesc(raw) {
 export function getCondition(desc = '') {
   const d = String(desc).toLowerCase().trim()
   // AEMET numeric codes
-  if (/^[56][0-9]n?$/.test(d) || d.includes('nieve'))                       return 'snowy'
+  if (/^[56][0-9]n?$/.test(d) || d.includes('nieve') || d.includes('neva') || d.includes('snow'))  return 'snowy'
   if (/^[34][0-9]n?$/.test(d) || d.includes('lluv') || d.includes('chub')
     || d.includes('rain') || d.includes('drizzle') || d.includes('shower'))   return 'rainy'
   if (/^5[1-4]n?$/.test(d) || d.includes('tormenta') || d.includes('thunder')

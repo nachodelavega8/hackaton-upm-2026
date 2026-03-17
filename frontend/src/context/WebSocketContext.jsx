@@ -37,8 +37,16 @@ export function WebSocketProvider({ children }) {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return
 
     const userId = user?.id ?? 'anon'
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${proto}//${window.location.host}/ws?user_id=${userId}`
+
+    // VITE_WS_URL is set in .env.production to wss://BACKEND_NGROK.ngrok.io/ws
+    // In local dev it is unset → fall back to the Vite-proxy path on the same host
+    const wsBase = import.meta.env.VITE_WS_URL
+    const url = wsBase
+      ? `${wsBase}?user_id=${userId}`
+      : (() => {
+          const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+          return `${proto}//${window.location.host}/ws?user_id=${userId}`
+        })()
 
     const ws = new WebSocket(url)
     wsRef.current = ws
