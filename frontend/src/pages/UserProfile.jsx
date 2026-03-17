@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Cloud, Mail, User, Cake, Trash2 } from 'lucide-react'
+import { Cloud, Mail, User, Cake, Trash2, ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 
 const AVATAR_ICONS = {
@@ -63,6 +63,14 @@ export default function UserProfile() {
       >
         {/* Header */}
         <motion.div variants={itemVariants} className="text-center mb-12">
+          <motion.button
+            onClick={() => navigate('/dashboard')}
+            className="mb-6 flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
+            whileHover={{ x: -3 }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Volver al Dashboard
+          </motion.button>
           <div className="flex justify-center mb-4">
             <motion.div
               animate={{ rotate: [0, 10, -10, 0] }}
